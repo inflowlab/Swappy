@@ -14,6 +14,17 @@ pnpm dev
 bun dev
 ```
 
+### Environment
+
+- Copy the example env file:
+
+```bash
+cp .env.example .env.local
+```
+
+- For demo/testing without a backend, set:
+  - `NEXT_PUBLIC_USE_MOCK_BACKEND=true`
+
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
