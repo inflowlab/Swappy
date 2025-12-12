@@ -1,4 +1,5 @@
 import { ErrorBanner } from '@/components/ui/banner'
+import { IntentDetail } from '@/components/intent/intent-detail'
 
 export default async function IntentDetailsPage (props: { params: Promise<{ intent_id?: string }> }) {
 	const { intent_id: intentId } = await props.params
@@ -11,14 +12,7 @@ export default async function IntentDetailsPage (props: { params: Promise<{ inte
 		)
 	}
 
-	return (
-		<div className='space-y-2'>
-			<h1 className='text-xl font-semibold tracking-tight'>Intent</h1>
-			<p className='text-sm text-zinc-700'>
-				Placeholder page for <code className='font-mono'>{intentId}</code>.
-			</p>
-		</div>
-	)
+	return <IntentDetail intentId={intentId} />
 }
 
 

@@ -3,12 +3,13 @@ import { getJson, postJson } from './http'
 import {
 	mockGetAuction,
 	mockGetIntent,
+	mockGetIntentDetail,
 	mockListAuctions,
 	mockListIntents,
 	mockParseFreeTextIntent,
 } from './mock'
 import type { FreeTextIntentParseRequest, FreeTextIntentParseResponse } from './intent-parse'
-import type { ApiAuction, ApiIntent } from './types'
+import type { ApiAuction, ApiIntent, ApiIntentDetail } from './types'
 
 function normalizeBaseUrl (baseUrl: string) {
 	return baseUrl.replace(/\/+$/, '')
@@ -30,6 +31,12 @@ export async function getIntentByOwner (owner: string, intentId: string): Promis
 	return await getJson<ApiIntent>(
 		`${baseUrl}/intents/${encodeURIComponent(intentId)}?owner=${encodeURIComponent(owner)}`,
 	)
+}
+
+export async function getIntentDetail (intentId: string): Promise<ApiIntentDetail | null> {
+	if (shouldMockBackend()) return await mockGetIntentDetail(intentId)
+	const baseUrl = normalizeBaseUrl(env.backendBaseUrl as string)
+	return await getJson<ApiIntentDetail>(`${baseUrl}/intent/${encodeURIComponent(intentId)}`)
 }
 
 export async function listAuctions (): Promise<ApiAuction[]> {

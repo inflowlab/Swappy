@@ -13,6 +13,24 @@ export type ApiIntent = {
 	extra?: Record<string, unknown>
 }
 
+export type ApiIntentDetail = ApiIntent & {
+	minBuyAmount?: string
+	expiresAtMs?: number
+
+	// Status-specific optional metadata:
+	auctionId?: string
+	auctionDeadlineMs?: number
+
+	settlementTxDigest?: string
+	redeemTxDigest?: string
+
+	solverUsed?: 'CoW' | 'Cetus' | 'Mixed' | string
+	matchedViaCoW?: boolean
+	routedViaCetus?: boolean
+	finalReceivedAmount?: string
+	failureReason?: string
+}
+
 export type ApiAuction = {
 	id: string
 	intentIds: string[]

@@ -1,6 +1,6 @@
 import { IntentStatus } from '@/lib/models/intent-status'
 import type { FreeTextIntentParseResponse } from './intent-parse'
-import type { ApiAuction, ApiIntent } from './types'
+import type { ApiAuction, ApiIntent, ApiIntentDetail } from './types'
 
 const fixedNowMs = 1_735_000_000_000
 
@@ -110,6 +110,47 @@ export async function mockParseFreeTextIntent (text: string): Promise<FreeTextIn
 		rawText: text,
 		parsed,
 	}
+}
+
+export async function mockGetIntentDetail (intentId: string): Promise<ApiIntentDetail | null> {
+	// Use a deterministic placeholder owner for direct navigation demos.
+	const owner = '0xDEMO_OWNER'
+	const base = (await mockListIntents(owner)).find((i) => i.id === intentId)
+	if (!base) return null
+
+	// Add status-specific fields for the detail page UX.
+	const detail: ApiIntentDetail = {
+		...base,
+		minBuyAmount: base.buySymbol === 'USDC' ? '24.5' : '9.9',
+		expiresAtMs: fixedNowMs + 15 * 60_000,
+	}
+
+	if (base.status === IntentStatus.BATCHED) {
+		detail.auctionId = 'auction_001'
+		detail.auctionDeadlineMs = fixedNowMs + 5 * 60_000
+	}
+
+	if (base.status === IntentStatus.SETTLED) {
+		detail.settlementTxDigest = 'MOCK_SETTLE_TX_001'
+		detail.solverUsed = 'Mixed'
+		detail.matchedViaCoW = true
+		detail.routedViaCetus = true
+		detail.finalReceivedAmount = base.buySymbol ? `24.9 ${base.buySymbol}` : '24.9'
+	}
+
+	if (base.status === IntentStatus.CANCELED) {
+		detail.redeemTxDigest = 'MOCK_REDEEM_TX_001'
+	}
+
+	if (base.status === IntentStatus.EXPIRED) {
+		detail.redeemTxDigest = 'MOCK_REDEEM_TX_002'
+	}
+
+	if (base.status === IntentStatus.FAILED) {
+		detail.failureReason = 'Mock failure: solver could not produce a valid plan.'
+	}
+
+	return detail
 }
 
 
