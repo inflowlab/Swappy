@@ -1,0 +1,30 @@
+dist/
+*.log           # File extension
+**/logs
+
+# Dependencies
+**/node_modules/
+
+# Next.js
+**/.next/
+**/out/
+
+# Build outputs / coverage
+**/build/
+**/coverage/
+
+# Turborepo / Vercel / tooling caches
+**/.turbo/
+**/.vercel/
+**/.cache/
+**/.parcel-cache/
+
+# Package manager caches
+**/.npm-cache/
+**/.pnpm-store/
+**/.yarn/
+
+# OS / editor noise
+**/.DS_Store
+**/.idea/
+**/.vscode/
