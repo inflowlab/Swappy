@@ -3,8 +3,9 @@ export type FreeTextIntentParseRequest = {
 }
 
 export type ParsedIntentPreview = {
-	sellSymbol: string
-	buySymbol: string
+	// Canonical coin type strings (from coordinator + token registry)
+	sellToken: string
+	buyToken: string
 	sellAmount: string
 	minBuyAmount: string
 	expiresAtMs: number

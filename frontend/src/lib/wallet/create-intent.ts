@@ -13,7 +13,7 @@ export async function createIntentAndDeposit (
 	// - In demo/mock mode, simulate an on-chain tx result.
 	// - In real mode, we require protocol tx-building details (argument schema, type args, etc).
 	if (env.useMockBackend) {
-		const intentId = `intent_${parsed.sellSymbol}_${parsed.buySymbol}`.replace(/[^a-zA-Z0-9_]/g, '_')
+		const intentId = `intent_${parsed.sellToken}_${parsed.buyToken}`.replace(/[^a-zA-Z0-9_]/g, '_')
 		return {
 			digest: `MOCK_TX_${intentId}`,
 			intentId,

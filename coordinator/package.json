@@ -1,0 +1,30 @@
+{
+  "name": "@swappy/coordinator",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/server.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:integration:openai": "tsx scripts/integration-openai-parse.ts"
+  },
+  "dependencies": {
+    "@fastify/cors": "8.5.0",
+    "fastify": "4.28.1",
+    "openai": "6.1.0",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "20.11.30",
+    "tsx": "4.19.2",
+    "typescript": "5.6.3",
+    "vitest": "2.1.8"
+  }
+}
+

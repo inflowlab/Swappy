@@ -5,6 +5,7 @@ import type { ApiToken } from '@/lib/api'
 import { getTokens } from '@/lib/api'
 import { formatTokenLabel, formatTokenAmount } from '@/lib/tokens/format'
 import { logUiError, toUiError } from '@/lib/errors/ui-errors'
+import { useNetwork } from '@/components/network/network-provider'
 
 type TokenRegistryState = {
 	tokens: ApiToken[] | null
@@ -18,40 +19,57 @@ type TokenRegistryState = {
 
 const TokenRegistryContext = createContext<TokenRegistryState | null>(null)
 
-let cachedTokens: ApiToken[] | null = null
-let inflight: Promise<ApiToken[]> | null = null
+const cachedByNetwork = new Map<string, ApiToken[] | null>()
+const inflightByNetwork = new Map<string, Promise<ApiToken[]>>()
 
-async function fetchTokensOnce (): Promise<ApiToken[]> {
-	if (cachedTokens) return cachedTokens
-	if (!inflight) inflight = getTokens()
-	const tokens = await inflight
-	cachedTokens = tokens
-	return tokens
+async function fetchTokensOnce (network: string): Promise<ApiToken[]> {
+	if (cachedByNetwork.has(network) && cachedByNetwork.get(network)) {
+		return cachedByNetwork.get(network) as ApiToken[]
+	}
+	if (!inflightByNetwork.has(network)) {
+		const p = getTokens()
+			.then((tokens) => {
+				cachedByNetwork.set(network, tokens)
+				return tokens
+			})
+			.finally(() => {
+				// Always clear inflight, even on failure, so a later retry can proceed.
+				inflightByNetwork.delete(network)
+			})
+		inflightByNetwork.set(network, p)
+	}
+	return await (inflightByNetwork.get(network) as Promise<ApiToken[]>)
 }
 
 export function TokenRegistryProvider (props: { children: React.ReactNode }) {
 	const { children } = props
+	const { network } = useNetwork()
 
+	const cachedTokens = cachedByNetwork.get(network) ?? null
 	const [tokens, setTokens] = useState<ApiToken[] | null>(cachedTokens)
 	const [isLoading, setIsLoading] = useState(!cachedTokens)
 	const [error, setError] = useState<string | null>(null)
 
 	const load = useCallback(async () => {
-		if (cachedTokens) return
+		const cached = cachedByNetwork.get(network) ?? null
+		if (cached) {
+			setTokens(cached)
+			return
+		}
 		setIsLoading(true)
 		setError(null)
 		try {
-			const t = await fetchTokensOnce()
+			const t = await fetchTokensOnce(network)
 			setTokens(t)
 		} catch (err) {
 			const uiErr = toUiError(err, { area: 'fetch' })
-			logUiError(uiErr, { op: 'getTokens' })
+			logUiError(uiErr, { op: 'getTokens', network })
 			setError('Token registry unavailable. Falling back to unknown token labels.')
 			setTokens(null)
 		} finally {
 			setIsLoading(false)
 		}
-	}, [])
+	}, [network])
 
 	useEffect(() => {
 		void load()

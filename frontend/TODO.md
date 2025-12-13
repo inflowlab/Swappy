@@ -7,7 +7,7 @@ This document is the **handoff checklist** between the current demo-safe fronten
 ### Backend REST (mock mode)
 - **How**
   - Set `NEXT_PUBLIC_USE_MOCK_BACKEND=true` to force mock responses.
-  - Additionally, if `NEXT_PUBLIC_BACKEND_BASE_URL` is missing, the API client falls back to mocks.
+  - Additionally, if `NEXT_PUBLIC_COORDINATOR_URL` is missing, the API client falls back to mocks.
 - **Where**
   - Mock data + mock endpoints live in `src/lib/api/mock.ts`.
   - Client routing to mock vs real lives in `src/lib/api/client.ts` (`shouldMockBackend()`).

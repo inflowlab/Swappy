@@ -1,0 +1,16 @@
+[
+  {
+    "id": "0x2::sui::SUI",
+    "symbol": "SUI",
+    "decimals": 9,
+    "indicativePriceUsd": "3.00"
+  },
+  {
+    "id": "0xUSDC",
+    "symbol": "USDC",
+    "decimals": 6,
+    "indicativePriceUsd": "1.00"
+  }
+]
+
+

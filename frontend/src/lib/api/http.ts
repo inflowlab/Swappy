@@ -2,6 +2,7 @@ export type HttpError = {
 	status: number
 	message: string
 	bodyText?: string
+	bodyJson?: unknown
 }
 
 function withTimeout (init: RequestInit | undefined, timeoutMs = 10_000) {
@@ -32,13 +33,18 @@ export async function getJson<T> (url: string, init?: RequestInit): Promise<T> {
 
 	if (!res.ok) {
 		let bodyText: string | undefined
+		let bodyJson: unknown | undefined
 		try {
 			bodyText = await res.text()
+			try {
+				bodyJson = bodyText ? JSON.parse(bodyText) : undefined
+			} catch {}
 		} catch {}
 		const err: HttpError = {
 			status: res.status,
 			message: `HTTP ${res.status} for GET ${url}`,
 			bodyText,
+			bodyJson,
 		}
 		throw err
 	}
@@ -66,13 +72,18 @@ export async function postJson<TResponse> (
 
 	if (!res.ok) {
 		let bodyText: string | undefined
+		let bodyJson: unknown | undefined
 		try {
 			bodyText = await res.text()
+			try {
+				bodyJson = bodyText ? JSON.parse(bodyText) : undefined
+			} catch {}
 		} catch {}
 		const err: HttpError = {
 			status: res.status,
 			message: `HTTP ${res.status} for POST ${url}`,
 			bodyText,
+			bodyJson,
 		}
 		throw err
 	}

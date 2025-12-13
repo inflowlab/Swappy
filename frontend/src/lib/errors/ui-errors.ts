@@ -1,4 +1,5 @@
 import type { HttpError } from '@/lib/api'
+import { parseCoordinatorError } from '@/lib/api'
 
 export type UiErrorCategory = 'Wallet' | 'Backend' | 'Invariant' | 'UserInput' | 'Unknown'
 
@@ -8,6 +9,7 @@ export type UiErrorCode =
 	| 'WALLET_SUBMIT_FAILED'
 	| 'BACKEND_UNAVAILABLE'
 	| 'BACKEND_INVALID_RESPONSE'
+	| 'INVARIANT_NETWORK_MISMATCH'
 	| 'INVARIANT_MISSING_TX_DIGEST'
 	| 'INVARIANT_STATUS_CONTRADICTION'
 	| 'USER_INPUT_UNPARSEABLE'
@@ -37,6 +39,20 @@ function isHttpError (err: unknown): err is HttpError {
 function looksLikeUserRejected (msg: string) {
 	const s = msg.toLowerCase()
 	return s.includes('user rejected') || s.includes('rejected') || s.includes('denied')
+}
+
+function looksLikeTimeoutOrOffline (err: unknown, msg: string): boolean {
+	const rec = err as Record<string, unknown> | null
+	const name = rec && typeof rec === 'object' ? String(rec.name ?? '') : ''
+	const s = msg.toLowerCase()
+	return (
+		name === 'AbortError' ||
+		s.includes('aborted') ||
+		s.includes('timeout') ||
+		s.includes('failed to fetch') ||
+		s.includes('networkerror') ||
+		s.includes('load failed')
+	)
 }
 
 export function toUiError (
@@ -95,6 +111,58 @@ export function toUiError (
 	}
 
 	if (hint?.area === 'parse') {
+		if (looksLikeTimeoutOrOffline(err, msg)) {
+			return {
+				category: 'Backend',
+				code: 'BACKEND_UNAVAILABLE',
+				userMessage: 'Parsing temporarily unavailable. Please try again later.',
+				debugMessage: msg,
+			}
+		}
+		if (isHttpError(err)) {
+			const coord = parseCoordinatorError(err)
+			if (coord?.code === 'UNPARSEABLE_INTENT') {
+				return {
+					category: 'UserInput',
+					code: 'USER_INPUT_UNPARSEABLE',
+					userMessage: 'Unable to parse that intent. Please rephrase and try again.',
+					debugMessage: err.message,
+				}
+			}
+			if (coord?.code === 'INVALID_INPUT') {
+				return {
+					category: 'UserInput',
+					code: 'USER_INPUT_UNPARSEABLE',
+					userMessage: 'Invalid intent text. Please edit and try again.',
+					debugMessage: err.message,
+				}
+			}
+			if (coord?.code === 'INVALID_NETWORK') {
+				return {
+					category: 'Invariant',
+					code: 'INVARIANT_NETWORK_MISMATCH',
+					userMessage: 'Network mismatch. Please check your selected network and try again.',
+					debugMessage: err.message,
+				}
+			}
+			if (coord?.code === 'RATE_LIMITED') {
+				return {
+					category: 'Backend',
+					code: 'BACKEND_UNAVAILABLE',
+					userMessage: 'Parsing is rate-limited. Please wait a moment and try again.',
+					debugMessage: err.message,
+				}
+			}
+			if (coord?.code === 'PARSER_UNAVAILABLE') {
+				return {
+					category: 'Backend',
+					code: 'BACKEND_UNAVAILABLE',
+					userMessage: 'Parsing temporarily unavailable. Please try again later.',
+					debugMessage: err.message,
+				}
+			}
+		}
+
 		if (isHttpError(err) && err.status >= 400 && err.status < 500) {
 			return {
 				category: 'UserInput',
@@ -120,6 +188,14 @@ export function toUiError (
 	}
 
 	if (hint?.area === 'fetch') {
+		if (looksLikeTimeoutOrOffline(err, msg)) {
+			return {
+				category: 'Backend',
+				code: 'BACKEND_UNAVAILABLE',
+				userMessage: 'Service temporarily unavailable. Please try again later.',
+				debugMessage: msg,
+			}
+		}
 		if (isHttpError(err)) {
 			return {
 				category: 'Backend',

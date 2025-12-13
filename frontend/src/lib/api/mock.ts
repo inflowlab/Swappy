@@ -26,15 +26,15 @@ export async function mockParseFreeTextIntent (text: string): Promise<FreeTextIn
 	const parsed: FreeTextIntentParseResponse['parsed'] =
 		trimmed.toLowerCase().includes('usdc') && trimmed.toLowerCase().includes('sui')
 			? {
-					sellSymbol: trimmed.toLowerCase().includes('sell 200') ? 'USDC' : 'SUI',
-					buySymbol: trimmed.toLowerCase().includes('sell 200') ? 'SUI' : 'USDC',
+					sellToken: trimmed.toLowerCase().includes('sell 200') ? '0xUSDC' : '0x2::sui::SUI',
+					buyToken: trimmed.toLowerCase().includes('sell 200') ? '0x2::sui::SUI' : '0xUSDC',
 					sellAmount: trimmed.toLowerCase().includes('sell 200') ? '200' : '10',
 					minBuyAmount: trimmed.toLowerCase().includes('sell 200') ? '9.9' : '24.5',
 					expiresAtMs,
 				}
 			: {
-					sellSymbol: 'SUI',
-					buySymbol: 'USDC',
+					sellToken: '0x2::sui::SUI',
+					buyToken: '0xUSDC',
 					sellAmount: '10',
 					minBuyAmount: '24.5',
 					expiresAtMs,

@@ -1,5 +1,5 @@
 type PublicEnv = {
-	backendBaseUrl: string | null
+	coordinatorUrl: string | null
 	suiExplorerBaseUrl: string | null
 	useMockBackend: boolean
 	useMockChain: boolean
@@ -21,7 +21,7 @@ function readPublicBoolean (key: string): boolean {
 }
 
 export const env: PublicEnv = {
-	backendBaseUrl: readPublicString('NEXT_PUBLIC_BACKEND_BASE_URL'),
+	coordinatorUrl: readPublicString('NEXT_PUBLIC_COORDINATOR_URL'),
 	suiExplorerBaseUrl: readPublicString('NEXT_PUBLIC_SUI_EXPLORER_BASE_URL'),
 	useMockBackend: readPublicBoolean('NEXT_PUBLIC_USE_MOCK_BACKEND'),
 	useMockChain:

@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "rootDir": ".",
+    "outDir": "dist",
+    "noEmitOnError": true
+  },
+  "include": ["src/**/*.ts", "src/**/*.d.ts", "tests/**/*.ts", "scripts/**/*.ts", "vitest.config.ts"]
+}
+

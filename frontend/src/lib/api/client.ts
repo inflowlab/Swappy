@@ -13,21 +13,30 @@ function normalizeBaseUrl (baseUrl: string) {
 }
 
 function shouldMockBackend (): boolean {
-	return env.useMockBackend || !env.backendBaseUrl
+	return env.useMockBackend || !env.coordinatorUrl
 }
 
 export async function getTokens (): Promise<ApiToken[]> {
 	if (shouldMockBackend()) return await mockGetTokens()
-	const baseUrl = normalizeBaseUrl(env.backendBaseUrl as string)
-	return await getJson<ApiToken[]>(withNetwork(`${baseUrl}/tokens`))
+	const baseUrl = normalizeBaseUrl(env.coordinatorUrl as string)
+	return await getJson<ApiToken[]>(withNetwork(`${baseUrl}/api/tokens`))
 }
 
 export async function parseFreeTextIntent (
 	req: FreeTextIntentParseRequest,
+	opts?: { idempotencyKey?: string },
 ): Promise<FreeTextIntentParseResponse> {
 	if (shouldMockBackend()) return await mockParseFreeTextIntent(req.text)
-	const baseUrl = normalizeBaseUrl(env.backendBaseUrl as string)
-	return await postJson<FreeTextIntentParseResponse>(withNetwork(`${baseUrl}/intent/free-text`), req)
+	const baseUrl = normalizeBaseUrl(env.coordinatorUrl as string)
+	return await postJson<FreeTextIntentParseResponse>(
+		withNetwork(`${baseUrl}/api/intent/free-text`),
+		req,
+		{
+			headers: {
+				...(opts?.idempotencyKey ? { 'Idempotency-Key': opts.idempotencyKey } : {}),
+			},
+		},
+	)
 }
 
 

@@ -45,14 +45,23 @@ export default function NewIntentPage () {
 
 	const isTextValid = text.trim().length > 0
 
+	const makeIdempotencyKey = () => {
+		// Browser-only; safe fallback for older environments.
+		try {
+			return crypto.randomUUID()
+		} catch {
+			return `idem_${Date.now()}_${Math.random().toString(16).slice(2)}`
+		}
+	}
+
 	const sellToken = useMemo(() => {
 		if (!parsed) return null
-		return tokenRegistry.getBySymbol(parsed.parsed.sellSymbol) ?? null
+		return tokenRegistry.getById(parsed.parsed.sellToken) ?? null
 	}, [parsed, tokenRegistry])
 
 	const buyToken = useMemo(() => {
 		if (!parsed) return null
-		return tokenRegistry.getBySymbol(parsed.parsed.buySymbol) ?? null
+		return tokenRegistry.getById(parsed.parsed.buyToken) ?? null
 	}, [parsed, tokenRegistry])
 
 	const txExplorerUrl = txDigest ? getTxExplorerUrl(txDigest) : null
@@ -128,9 +137,10 @@ export default function NewIntentPage () {
 						type='button'
 						disabled={!canInteract || isParsing || !isTextValid}
 						onClick={() => {
+							const idempotencyKey = makeIdempotencyKey()
 							setIsParsing(true)
 							setParseError(null)
-							void parseFreeTextIntent({ text })
+							void parseFreeTextIntent({ text }, { idempotencyKey })
 								.then((res) => {
 									setParsed(res)
 								})
@@ -166,22 +176,34 @@ export default function NewIntentPage () {
 							<div className='text-xs font-semibold text-zinc-700'>Sell</div>
 							<div className='mt-1 text-sm text-zinc-950'>
 										{parsed.parsed.sellAmount}{' '}
-										{tokenRegistry.formatLabel({ symbol: sellToken?.symbol ?? parsed.parsed.sellSymbol })}
+										{tokenRegistry.formatLabel({
+											symbol: sellToken?.symbol ?? null,
+											tokenId: parsed.parsed.sellToken,
+										})}
 							</div>
 						</div>
 						<div className='rounded-md border border-zinc-200 p-3'>
 							<div className='text-xs font-semibold text-zinc-700'>Buy (minimum)</div>
 							<div className='mt-1 text-sm text-zinc-950'>
 										{parsed.parsed.minBuyAmount}{' '}
-										{tokenRegistry.formatLabel({ symbol: buyToken?.symbol ?? parsed.parsed.buySymbol })}
+										{tokenRegistry.formatLabel({
+											symbol: buyToken?.symbol ?? null,
+											tokenId: parsed.parsed.buyToken,
+										})}
 							</div>
 						</div>
 						<div className='rounded-md border border-zinc-200 p-3'>
 							<div className='text-xs font-semibold text-zinc-700'>Pair</div>
 							<div className='mt-1 text-sm text-zinc-950'>
-										{tokenRegistry.formatLabel({ symbol: sellToken?.symbol ?? parsed.parsed.sellSymbol })}{' '}
+										{tokenRegistry.formatLabel({
+											symbol: sellToken?.symbol ?? null,
+											tokenId: parsed.parsed.sellToken,
+										})}{' '}
 										→{' '}
-										{tokenRegistry.formatLabel({ symbol: buyToken?.symbol ?? parsed.parsed.buySymbol })}
+										{tokenRegistry.formatLabel({
+											symbol: buyToken?.symbol ?? null,
+											tokenId: parsed.parsed.buyToken,
+										})}
 							</div>
 						</div>
 						<div className='rounded-md border border-zinc-200 p-3'>

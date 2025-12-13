@@ -24,9 +24,9 @@ The UI is designed to **never hide uncertainty**:
 - **Architecture**:
   - On-chain reads live in `src/lib/sui/*` (coordinator-free).
   - REST is optional and used only for:
-    - free-text parse (`POST /intent/free-text`)
-    - token registry metadata (`GET /tokens`)
-    (all REST calls include `network=<...>` and `chainIdentifier=<...>`).
+    - free-text parse (`POST /api/intent/free-text`)
+    - token registry metadata (`GET /api/tokens`)
+    (all REST calls include `network=<...>`).
   - Wallet writes live in `src/lib/wallet/*` (real tx building is TODO pending arg schemas).
   - Token metadata is fetched once per app load via `GET /tokens` and cached in-memory.
   - Errors are mapped via a shared taxonomy in `src/lib/errors/ui-errors.ts`.
@@ -47,7 +47,7 @@ cp .env.example .env.local
   - `NEXT_PUBLIC_USE_MOCK_BACKEND=true` (demo without backend + mock tx results)
   - `NEXT_PUBLIC_USE_MOCK_CHAIN=true` (demo without RPC; mocks on-chain reads)
   - `NEXT_PUBLIC_DEFAULT_NETWORK=testnet` (can be changed from the UI dropdown at runtime)
-  - `NEXT_PUBLIC_BACKEND_BASE_URL=...` (when using a real backend)
+  - `NEXT_PUBLIC_COORDINATOR_URL=...` (when using a real coordinator)
   - `NEXT_PUBLIC_SUI_EXPLORER_BASE_URL=...`
   - `NEXT_PUBLIC_PROTOCOL_PACKAGE_ID=...` (required for real tx wiring later)
 
