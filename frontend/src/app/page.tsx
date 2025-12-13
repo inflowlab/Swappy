@@ -3,13 +3,16 @@
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ApiIntent } from '@/lib/api'
-import { listIntentsByOwner } from '@/lib/api'
 import { useWalletConnection } from '@/components/wallet/wallet-connection'
 import { ErrorBanner, WarningBanner } from '@/components/ui/banner'
 import { InlineNotification } from '@/components/ui/notification'
 import { IntentTable } from '@/components/intent/intent-table'
 import { env } from '@/lib/env'
 import { logUiError, toUiError } from '@/lib/errors/ui-errors'
+import { useNetwork } from '@/components/network/network-provider'
+import { useNetworkHealth } from '@/components/network/network-health'
+import { listMyIntentLinks } from '@/lib/sui/links'
+import { resolveIntentSummaries } from '@/lib/sui/intents'
 
 function shortAddress (address: string) {
 	if (address.length <= 12) return address
@@ -18,6 +21,8 @@ function shortAddress (address: string) {
 
 export default function DashboardPage () {
 	const { connected, address, connect } = useWalletConnection()
+	const { network } = useNetwork()
+	const networkHealth = useNetworkHealth()
 
 	const [intents, setIntents] = useState<ApiIntent[] | null>(null)
 	const [isLoading, setIsLoading] = useState(false)
@@ -25,6 +30,7 @@ export default function DashboardPage () {
 	const [notification, setNotification] = useState<string | null>(null)
 
 	const lastFetchedOwner = useRef<string | null>(null)
+	const lastFetchedNetwork = useRef<string | null>(null)
 
 	const owner = address ?? null
 	const hasWallet = connected && Boolean(owner)
@@ -34,36 +40,59 @@ export default function DashboardPage () {
 	const fetchIntents = useCallback(
 		async (force?: boolean) => {
 			if (!owner) return
-			if (!force && lastFetchedOwner.current === owner) return
+			if (!force && lastFetchedOwner.current === owner && lastFetchedNetwork.current === network) return
+			if (networkHealth.error && !env.useMockChain) {
+				setFetchError(networkHealth.error)
+				setIntents(null)
+				return
+			}
 
 			setIsLoading(true)
 			setFetchError(null)
 			try {
-				const data = await listIntentsByOwner(owner)
-				setIntents(Array.isArray(data) ? data : [])
+				const { links, warnings: linkWarnings } = await listMyIntentLinks({ network, owner, limit: 50 })
+				const intentIds = links.map((l) => l.intentId)
+				const { intents: resolved, warnings: recordWarnings } = await resolveIntentSummaries({
+					network,
+					owner,
+					intentIds,
+				})
+				setIntents(resolved)
+				if (linkWarnings.length || recordWarnings.length) {
+					setNotification(
+						`Some on-chain data could not be decoded (${linkWarnings.length + recordWarnings.length} warnings).`,
+					)
+					for (const w of [...linkWarnings, ...recordWarnings]) console.warn('[on-chain-warning]', w)
+				}
 				lastFetchedOwner.current = owner
+				lastFetchedNetwork.current = network
 			} catch (err) {
 				const uiErr = toUiError(err, { area: 'fetch' })
-				logUiError(uiErr, { op: 'listIntentsByOwner' })
+				logUiError(uiErr, {
+					op: 'listMyIntentLinks/resolveIntentSummaries',
+					network,
+				})
 				setFetchError(uiErr.userMessage)
 				setIntents(null)
 			} finally {
 				setIsLoading(false)
 			}
 		},
-		[owner],
+		[owner, network, networkHealth.error],
 	)
 
 	useEffect(() => {
 		// No backend calls before wallet connection.
 		if (!canFetch) return
+		if (networkHealth.error && !env.useMockChain) return
 		void fetchIntents(false)
-	}, [canFetch, fetchIntents])
+	}, [canFetch, fetchIntents, networkHealth.error])
 
 	useEffect(() => {
 		// Wallet disconnected mid-session: clear state safely.
 		if (hasWallet) return
 		lastFetchedOwner.current = null
+		lastFetchedNetwork.current = null
 		setIntents(null)
 		setFetchError(null)
 		setIsLoading(false)
@@ -125,12 +154,10 @@ export default function DashboardPage () {
 				<InlineNotification tone='warning' message={notification} />
 			) : null}
 
-			{!env.backendBaseUrl ? (
-				<WarningBanner title='Backend URL not configured'>
-					Set <code className='font-mono'>NEXT_PUBLIC_BACKEND_BASE_URL</code> (see
-					<code className='ml-1 font-mono'>frontend/.env.example</code>).
-				</WarningBanner>
-			) : null}
+			<WarningBanner title='Coordinator-free reads'>
+				Intents are read directly from on-chain shared state (no REST, no indexer). Backend is only needed for
+				optional parsing and token metadata.
+			</WarningBanner>
 
 			{!env.suiExplorerBaseUrl ? (
 				<WarningBanner title='Sui Explorer URL not configured'>

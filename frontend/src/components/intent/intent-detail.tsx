@@ -3,7 +3,6 @@
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ApiIntentDetail } from '@/lib/api'
-import { getIntentDetail } from '@/lib/api'
 import { StatusBadge } from '@/components/status-badge'
 import { ErrorBanner, WarningBanner } from '@/components/ui/banner'
 import { InlineNotification } from '@/components/ui/notification'
@@ -12,6 +11,10 @@ import { useTokenRegistry } from '@/components/tokens/token-registry'
 import { cancelIntent } from '@/lib/wallet'
 import { useWalletConnection } from '@/components/wallet/wallet-connection'
 import { logUiError, toUiError } from '@/lib/errors/ui-errors'
+import { useNetwork } from '@/components/network/network-provider'
+import { getIntentRecord } from '@/lib/sui/intents'
+import { useNetworkHealth } from '@/components/network/network-health'
+import { env } from '@/lib/env'
 
 function shortId (id: string) {
 	if (id.length <= 18) return id
@@ -40,6 +43,8 @@ export function IntentDetail (props: { intentId: string }) {
 	const { intentId } = props
 	const { connected } = useWalletConnection()
 	const tokenRegistry = useTokenRegistry()
+	const { network } = useNetwork()
+	const networkHealth = useNetworkHealth()
 
 	const [intent, setIntent] = useState<ApiIntentDetail | null>(null)
 	const [isLoading, setIsLoading] = useState(true)
@@ -53,22 +58,23 @@ export function IntentDetail (props: { intentId: string }) {
 		setIsLoading(true)
 		setError(null)
 		try {
-			const data = await getIntentDetail(intentId)
+			const { intent: data, warning } = await getIntentRecord({ network, intentId })
 			if (!data) {
-				setError('Intent not found.')
+				setError(warning ?? 'Intent not found or not available on-chain yet.')
 				setIntent(null)
 				return
 			}
+			if (warning) setNotification(warning)
 			setIntent(data)
 		} catch (err) {
 			const uiErr = toUiError(err, { area: 'fetch' })
-			logUiError(uiErr, { op: 'getIntentDetail', intentId })
+			logUiError(uiErr, { op: 'getIntentRecord', intentId, network })
 			setError(uiErr.userMessage)
 			setIntent(null)
 		} finally {
 			setIsLoading(false)
 		}
-	}, [intentId])
+	}, [intentId, network])
 
 	useEffect(() => {
 		// Fetch on mount only (and when navigating to a different intent id).
@@ -209,7 +215,12 @@ export function IntentDetail (props: { intentId: string }) {
 							<div className='mt-4 flex items-center gap-2'>
 								<button
 									type='button'
-									disabled={!connected || !canCancel || isCanceling}
+									disabled={
+										!connected ||
+										!canCancel ||
+										isCanceling ||
+										(Boolean(networkHealth.error) && !env.useMockChain)
+									}
 									onClick={() => {
 										setIsCanceling(true)
 										setCancelError(null)

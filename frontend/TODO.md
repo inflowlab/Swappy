@@ -17,18 +17,6 @@ This document is the **handoff checklist** between the current demo-safe fronten
   - **Where**: `mockGetTokens()` in `src/lib/api/mock.ts`, used by `getTokens()` in `src/lib/api/client.ts`.
   - **Notes**: Includes optional `indicativePriceUsd` for preview-only display.
 
-- **GET /intents?owner=<address>**
-  - **Where**: `mockListIntents(owner)` in `src/lib/api/mock.ts`, used by `listIntentsByOwner()` in `src/lib/api/client.ts`.
-  - **Notes**: Returns deterministic list; any owner address ending with `'0'` returns `[]` to demo the empty state.
-
-- **GET /intent/:intent_id**
-  - **Where**: `mockGetIntentDetail(intentId)` in `src/lib/api/mock.ts`, used by `getIntentDetail()` in `src/lib/api/client.ts`.
-  - **Notes**: Adds status-specific fields (auctionId, digests, solver summary) for demo.
-
-- **GET /auction/:auction_id**
-  - **Where**: `mockGetAuctionDetail(auctionId)` in `src/lib/api/mock.ts`, used by `getAuctionDetail()` in `src/lib/api/client.ts`.
-  - **Notes**: Auction status is OPEN/SETTLED in the mock; SETTLED includes settlement proof fields.
-
 - **POST /intent/free-text**
   - **Where**: `mockParseFreeTextIntent(text)` in `src/lib/api/mock.ts`, used by `parseFreeTextIntent()` in `src/lib/api/client.ts`.
   - **Notes**: This is a demo-only parser. **Real parsing is authoritative on the backend.**
@@ -69,6 +57,33 @@ This document is the **handoff checklist** between the current demo-safe fronten
   - Sui client wiring: `src/components/wallet/wallet-connection.tsx` (`SuiClientProvider defaultNetwork={network}`)
 - **Contract**
   - Every backend request includes `network=<mainnet|testnet|devnet|localnet>` as a query param.
+  - Every backend request also includes `chainIdentifier=<expected_chain_identifier>` as a query param.
+
+### Coordinator-free read plane (on-chain)
+- **Dashboard, Intent Detail, Auction Detail** now read from chain directly:
+  - `suix_getOwnedObjects` filtered by `NEXT_PUBLIC_INTENT_LINK_TYPE_{NETWORK}`
+  - `sui_getDynamicFieldObject` under `NEXT_PUBLIC_AUCTION_BOOK_ID_{NETWORK}` with `u64` keys
+- These reads require env-driven configuration per network in real deployments:
+  - `NEXT_PUBLIC_SUI_RPC_{NETWORK}`
+  - `NEXT_PUBLIC_CHAIN_IDENTIFIER_{NETWORK}`
+  - `NEXT_PUBLIC_AUCTION_BOOK_ID_{NETWORK}`
+  - `NEXT_PUBLIC_INTENT_LINK_TYPE_{NETWORK}`
+  - `NEXT_PUBLIC_INTENT_TYPE_{NETWORK}` (validation/decoding only)
+
+### Mock-chain mode (demo-friendly)
+- **How**
+  - Set `NEXT_PUBLIC_USE_MOCK_CHAIN=true`
+  - `NEXT_PUBLIC_USE_MOCK_BACKEND=true` also implies mock-chain for convenience.
+- **Where**
+  - Mock chain objects live in `src/lib/sui/mock.ts`
+  - Read modules automatically use mock chain when:
+    - `NEXT_PUBLIC_USE_MOCK_CHAIN=true`, OR
+    - required chain env vars are missing for the selected network (implicit demo fallback)
+  - Modules involved:
+    - `src/lib/sui/links.ts`
+    - `src/lib/sui/intents.ts`
+    - `src/lib/sui/auctions.ts`
+    - `src/lib/sui/client.ts` (chainIdentifier)
 
 ### Fail-fast backend calls (no infinite spinners)
 - **How**
@@ -89,30 +104,6 @@ This document is the **handoff checklist** between the current demo-safe fronten
 - **GET /tokens**
   - Confirm canonical token **ID** used across all APIs (coinType/address/objectId).
   - Provide `symbol`, `decimals`; optional `indicativePriceUsd` allowed (preview-only).
-
-- **GET /intents?owner=<address>&network=<network>**
-  - Confirm field types for amounts:
-    - If amounts are **base-unit integers**, frontend should format using decimals.
-    - If amounts are already human decimals, frontend will display as-is (no rounding).
-  - Provide enough fields to render dashboard table:
-    - `id`, `status`, `sellSymbol`/`buySymbol` or token IDs, `sellAmount`, optional `pairLabel`.
-
-- **GET /intent/:intent_id?network=<network>**
-  - Must provide canonical fields used by the intent detail:
-    - `id`, `owner`, `sell/buy token`, `sellAmount`, `minBuyAmount`, `expiresAtMs`, `status`
-  - Status-specific requirements (for UI correctness):
-    - `BATCHED`: `auctionId`, `auctionDeadlineMs`
-    - `SETTLED`: `settlementTxDigest` + solver/execution summary fields (no derived UI math)
-    - `CANCELED`/`EXPIRED`: `redeemTxDigest`
-    - `FAILED`: optional `failureReason` (UI copy always states “No fund loss”)
-
-- **GET /auction/:auction_id?network=<network>**
-  - Auction status is assumed **OPEN** or **SETTLED**.
-  - Must include intents (≤ 10) with fields for the auction table:
-    - `intentId`, `pairLabel` or token fields, `sellAmount`, `status`, optional `executionType` (CoW/Cetus/Skipped)
-  - If status == `SETTLED`, include settlement proof fields:
-    - `settlementTxDigest` (required for finalized claim)
-    - `winningSolver`, `cowMatchesCount`, `cetusSwapsCount`, `totalBuyVolume`
 
 - **POST /intent/free-text?network=<network>**
   - Backend parsing is authoritative; frontend sends raw text.

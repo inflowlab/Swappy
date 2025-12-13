@@ -5,11 +5,20 @@
 - **Backend is informational**: outages and inconsistent responses must be visible.
 - **On-chain is authoritative**: any finality claims require on-chain evidence (tx digest).
 
+### Demo modes (important)
+- **Mock-chain mode** (`NEXT_PUBLIC_USE_MOCK_CHAIN=true`):
+  - Dashboard / Intent detail / Auction detail read from deterministic mocked objects (no RPC required).
+  - Network mismatch checks and missing chain env vars do **not** block the demo.
+- **Mock-backend mode** (`NEXT_PUBLIC_USE_MOCK_BACKEND=true`):
+  - Token registry (`GET /tokens`) and parsing (`POST /intent/free-text`) are mocked.
+  - Wallet tx results are mocked (no real signing).
+
 ### Quick QA (judges can be shown this live)
 - **Dashboard**
-  - Wallet disconnected: no backend calls, clear connect CTA.
-  - Wallet connected: one fetch per load/reconnect, explicit loading + error states.
+  - Wallet disconnected: no on-chain reads, clear connect CTA.
+  - Wallet connected: one chain-read per load/reconnect, explicit loading + error states.
   - Empty list: “No intents yet…” message + Create Intent CTA.
+  - Missing/partial on-chain data: warning row (no crash, no silent failure).
 - **Create Intent**
   - No wallet: inputs disabled + “Connect your wallet…” warning.
   - Parse failures: input preserved; error explains next step.

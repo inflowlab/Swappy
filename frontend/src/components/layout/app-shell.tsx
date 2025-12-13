@@ -1,5 +1,8 @@
+'use client'
+
 import type { ReactNode } from 'react'
 import { AppHeader } from '@/components/layout/app-header'
+import { NetworkMismatchBanner } from '@/components/network/network-health'
 import { TokenRegistryBanner } from '@/components/tokens/token-registry-banner'
 
 export function AppShell (props: { children: ReactNode }) {
@@ -9,6 +12,7 @@ export function AppShell (props: { children: ReactNode }) {
 		<div className='min-h-dvh bg-zinc-50 text-zinc-950'>
 			<AppHeader />
 			<main className='mx-auto w-full max-w-5xl space-y-4 px-4 py-8'>
+				<NetworkMismatchBanner />
 				<TokenRegistryBanner />
 				{children}
 			</main>

@@ -15,9 +15,13 @@ This document describes the current UX flows and the corresponding backend + on-
   - Selects network via header dropdown: `mainnet | testnet | devnet | localnet`.
   - Choice persists in `localStorage` under `swappy.network`.
 - **Backend**
-  - Every REST request includes `network=<network>` query param (added automatically in `src/lib/api/client.ts`).
+  - Every REST request includes:
+    - `network=<network>`
+    - `chainIdentifier=<expected_chain_identifier_for_network>`
+    (added automatically in `src/lib/api/client.ts`).
 - **Chain**
   - `SuiClientProvider` is configured with all networks and uses the selected network as `defaultNetwork`.
+  - UI verifies RPC `chainIdentifier` vs expected; mismatches show a warning and **block writes**.
 
 ### Token registry (metadata only)
 - **User**
@@ -56,10 +60,12 @@ Let a user connect their wallet, see whether they have intents, and navigate to 
   - Shows loading / explicit error / empty / table states.
 
 ### Backend interactions
-- `GET /intents?owner=<wallet_address>&network=<network>`
+None (coordinator-free on-chain reads).
 
 ### Chain interactions
-- None (read-only). Wallet connect only.
+- Read-only:
+  - `suix_getOwnedObjects` filtered by `INTENT_LINK_TYPE_{env}`
+  - `sui_getDynamicFieldObject` for each intent record under `AUCTION_BOOK_ID_{env}`
 
 ## Workflow 2 — Create intent (`/intent/new`)
 
@@ -109,9 +115,11 @@ Provide a canonical lifecycle view explaining funds state, actions, and on-chain
 - Shows warning when intent fields are partial (non-blocking).
 
 ### Backend interactions
-- `GET /intent/<intent_id>?network=<network>`
+None (coordinator-free on-chain reads).
 
 ### Chain interactions
+- Read-only:
+  - `sui_getDynamicFieldObject(parent=AUCTION_BOOK_ID, key=u64(intent_id))`
 - Only for `OPEN_ESCROWED` cancellation:
   - Wallet-signed transaction: `cancel_intent(...)`
   - **Current state**: mocked in demo mode; real tx build is TODO pending argument schema.
@@ -135,10 +143,12 @@ Judge-facing explanation of batch auction grouping, execution type, solver used,
 - Shows warning if status is SETTLED but settlement digest is missing (pending confirmation).
 
 ### Backend interactions
-- `GET /auction/<auction_id>?network=<network>`
+None (coordinator-free on-chain reads).
 
 ### Chain interactions
-- None (read-only). Explorer links only if digest exists.
+- Read-only:
+  - `sui_getDynamicFieldObject(parent=AUCTION_BOOK_ID, key=u64(auction_id))`
+  - Explorer links only if digest exists.
 
 ## Demo/mock mode notes
 - When `NEXT_PUBLIC_USE_MOCK_BACKEND=true`, the backend calls are served by `src/lib/api/mock.ts`.

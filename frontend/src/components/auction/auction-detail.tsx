@@ -3,12 +3,13 @@
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ApiAuctionDetail, ApiAuctionIntentRow } from '@/lib/api'
-import { getAuctionDetail } from '@/lib/api'
 import { ErrorBanner, WarningBanner } from '@/components/ui/banner'
 import { StatusBadge } from '@/components/status-badge'
 import { getTxExplorerUrl } from '@/lib/explorer'
 import { useTokenRegistry } from '@/components/tokens/token-registry'
 import { logUiError, toUiError } from '@/lib/errors/ui-errors'
+import { useNetwork } from '@/components/network/network-provider'
+import { getAuctionRecord } from '@/lib/sui/auctions'
 
 function shortId (id: string) {
 	if (id.length <= 18) return id
@@ -31,6 +32,7 @@ function isSettled (status: string) {
 export function AuctionDetail (props: { auctionId: string }) {
 	const { auctionId } = props
 	const tokenRegistry = useTokenRegistry()
+	const { network } = useNetwork()
 
 	const [auction, setAuction] = useState<ApiAuctionDetail | null>(null)
 	const [isLoading, setIsLoading] = useState(true)
@@ -40,22 +42,23 @@ export function AuctionDetail (props: { auctionId: string }) {
 		setIsLoading(true)
 		setError(null)
 		try {
-			const data = await getAuctionDetail(auctionId)
+			const { auction: data, warning } = await getAuctionRecord({ network, auctionId })
 			if (!data) {
-				setError('Auction not found.')
+				setError(warning ?? 'Auction not found or not available on-chain yet.')
 				setAuction(null)
 				return
 			}
+			if (warning) console.warn('[on-chain-warning]', warning)
 			setAuction(data)
 		} catch (err) {
 			const uiErr = toUiError(err, { area: 'fetch' })
-			logUiError(uiErr, { op: 'getAuctionDetail', auctionId })
+			logUiError(uiErr, { op: 'getAuctionRecord', auctionId })
 			setError(uiErr.userMessage)
 			setAuction(null)
 		} finally {
 			setIsLoading(false)
 		}
-	}, [auctionId])
+	}, [auctionId, network])
 
 	useEffect(() => {
 		// Fetch once per load (and when navigating to a different auction id).

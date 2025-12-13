@@ -36,9 +36,18 @@ export function IntentTable (props: {
 						const pair =
 							intent.pairLabel ??
 							`${tokenRegistry.formatLabel({ symbol: intent.sellSymbol })} → ${tokenRegistry.formatLabel({ symbol: intent.buySymbol })}`
+						const rowWarning =
+							intent.extra && typeof intent.extra === 'object' && 'warning' in intent.extra
+								? String((intent.extra as Record<string, unknown>).warning)
+								: null
 						return (
 							<tr key={intent.id} className='text-zinc-900'>
-								<td className='px-4 py-3 font-mono text-xs'>{shortId(intent.id)}</td>
+								<td className='px-4 py-3'>
+									<div className='font-mono text-xs'>{shortId(intent.id)}</div>
+									{rowWarning ? (
+										<div className='mt-1 text-xs text-amber-700'>{rowWarning}</div>
+									) : null}
+								</td>
 								<td className='px-4 py-3'>{pair || '—'}</td>
 								<td className='px-4 py-3'>
 									{intent.sellAmount && intent.sellSymbol

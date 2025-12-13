@@ -9,9 +9,11 @@ import { useWalletConnection } from '@/components/wallet/wallet-connection'
 import { ErrorBanner, WarningBanner } from '@/components/ui/banner'
 import { InlineNotification } from '@/components/ui/notification'
 import { useTokenRegistry } from '@/components/tokens/token-registry'
+import { useNetworkHealth } from '@/components/network/network-health'
 import { createIntentAndDeposit } from '@/lib/wallet'
 import { getTxExplorerUrl } from '@/lib/explorer'
 import { logUiError, toUiError } from '@/lib/errors/ui-errors'
+import { env } from '@/lib/env'
 
 function formatUtc (ms: number) {
 	try {
@@ -25,6 +27,7 @@ export default function NewIntentPage () {
 	const router = useRouter()
 	const { connected, address, connect } = useWalletConnection()
 	const tokenRegistry = useTokenRegistry()
+	const networkHealth = useNetworkHealth()
 
 	const [text, setText] = useState('')
 	const [isParsing, setIsParsing] = useState(false)
@@ -38,7 +41,7 @@ export default function NewIntentPage () {
 	const [notification, setNotification] = useState<string | null>(null)
 
 	const hasWallet = connected && Boolean(address)
-	const canInteract = hasWallet && !isSubmitting
+	const canInteract = hasWallet && !isSubmitting && (!networkHealth.error || env.useMockChain)
 
 	const isTextValid = text.trim().length > 0
 
@@ -205,7 +208,7 @@ export default function NewIntentPage () {
 						<div className='text-xs text-zinc-500'>No signing happens until you click Confirm & Deposit.</div>
 						<button
 							type='button'
-							disabled={!canInteract || isSubmitting}
+							disabled={!canInteract || isSubmitting || Boolean(networkHealth.error)}
 							onClick={() => {
 								setIsSubmitting(true)
 								setTxError(null)
