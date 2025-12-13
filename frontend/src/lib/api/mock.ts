@@ -1,6 +1,6 @@
 import { IntentStatus } from '@/lib/models/intent-status'
 import type { FreeTextIntentParseResponse } from './intent-parse'
-import type { ApiAuction, ApiAuctionDetail, ApiIntent, ApiIntentDetail } from './types'
+import type { ApiAuction, ApiAuctionDetail, ApiIntent, ApiIntentDetail, ApiToken } from './types'
 
 const fixedNowMs = 1_735_000_000_000
 
@@ -62,6 +62,21 @@ const mockAuctions: ApiAuction[] = [
 		id: 'auction_002',
 		intentIds: ['intent_003'],
 		createdAtMs: fixedNowMs - 90 * 60_000,
+	},
+]
+
+const mockTokens: ApiToken[] = [
+	{
+		id: '0x2::sui::SUI',
+		symbol: 'SUI',
+		decimals: 9,
+		indicativePriceUsd: '2.50',
+	},
+	{
+		id: '0xUSDC',
+		symbol: 'USDC',
+		decimals: 6,
+		indicativePriceUsd: '1.00',
 	},
 ]
 
@@ -201,6 +216,10 @@ export async function mockGetAuctionDetail (auctionId: string): Promise<ApiAucti
 	}
 
 	return detail
+}
+
+export async function mockGetTokens (): Promise<ApiToken[]> {
+	return mockTokens
 }
 
 

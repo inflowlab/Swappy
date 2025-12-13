@@ -2,27 +2,18 @@
 
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { ApiIntent, HttpError } from '@/lib/api'
+import type { ApiIntent } from '@/lib/api'
 import { listIntentsByOwner } from '@/lib/api'
 import { useWalletConnection } from '@/components/wallet/wallet-connection'
 import { ErrorBanner, WarningBanner } from '@/components/ui/banner'
 import { InlineNotification } from '@/components/ui/notification'
 import { IntentTable } from '@/components/intent/intent-table'
 import { env } from '@/lib/env'
+import { logUiError, toUiError } from '@/lib/errors/ui-errors'
 
 function shortAddress (address: string) {
 	if (address.length <= 12) return address
 	return `${address.slice(0, 6)}…${address.slice(-4)}`
-}
-
-function errorMessage (err: unknown): string {
-	if (typeof err === 'string') return err
-	if (err && typeof err === 'object' && 'message' in err && typeof err.message === 'string') {
-		return err.message
-	}
-	const httpErr = err as Partial<HttpError>
-	if (httpErr?.status) return `Service temporarily unavailable (HTTP ${httpErr.status}).`
-	return 'Service temporarily unavailable.'
 }
 
 export default function DashboardPage () {
@@ -52,8 +43,9 @@ export default function DashboardPage () {
 				setIntents(Array.isArray(data) ? data : [])
 				lastFetchedOwner.current = owner
 			} catch (err) {
-				console.error('Intent fetch failed:', err)
-				setFetchError(errorMessage(err))
+				const uiErr = toUiError(err, { area: 'fetch' })
+				logUiError(uiErr, { op: 'listIntentsByOwner' })
+				setFetchError(uiErr.userMessage)
 				setIntents(null)
 			} finally {
 				setIsLoading(false)
@@ -116,8 +108,9 @@ export default function DashboardPage () {
 							onClick={() => {
 								setNotification(null)
 								void connect().catch((err) => {
-									console.error('Wallet connect rejected/failed:', err)
-									setNotification('Wallet connection was rejected or failed. Please try again.')
+									const uiErr = toUiError(err, { area: 'connect' })
+									logUiError(uiErr, { op: 'walletConnect' })
+									setNotification(uiErr.userMessage)
 								})
 							}}
 							className='inline-flex h-9 items-center rounded-md border border-zinc-200 bg-white px-3 text-sm font-medium hover:bg-zinc-50'

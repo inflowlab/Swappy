@@ -8,9 +8,10 @@ import type { FreeTextIntentParseResponse } from '@/lib/api'
 import { useWalletConnection } from '@/components/wallet/wallet-connection'
 import { ErrorBanner, WarningBanner } from '@/components/ui/banner'
 import { InlineNotification } from '@/components/ui/notification'
-import { getTokenInfo } from '@/lib/tokens/registry'
+import { useTokenRegistry } from '@/components/tokens/token-registry'
 import { createIntentAndDeposit } from '@/lib/wallet'
 import { getTxExplorerUrl } from '@/lib/explorer'
+import { logUiError, toUiError } from '@/lib/errors/ui-errors'
 
 function formatUtc (ms: number) {
 	try {
@@ -23,6 +24,7 @@ function formatUtc (ms: number) {
 export default function NewIntentPage () {
 	const router = useRouter()
 	const { connected, address, connect } = useWalletConnection()
+	const tokenRegistry = useTokenRegistry()
 
 	const [text, setText] = useState('')
 	const [isParsing, setIsParsing] = useState(false)
@@ -42,13 +44,13 @@ export default function NewIntentPage () {
 
 	const sellToken = useMemo(() => {
 		if (!parsed) return null
-		return getTokenInfo(parsed.parsed.sellSymbol) ?? { symbol: parsed.parsed.sellSymbol, decimals: 0 }
-	}, [parsed])
+		return tokenRegistry.getBySymbol(parsed.parsed.sellSymbol) ?? null
+	}, [parsed, tokenRegistry])
 
 	const buyToken = useMemo(() => {
 		if (!parsed) return null
-		return getTokenInfo(parsed.parsed.buySymbol) ?? { symbol: parsed.parsed.buySymbol, decimals: 0 }
-	}, [parsed])
+		return tokenRegistry.getBySymbol(parsed.parsed.buySymbol) ?? null
+	}, [parsed, tokenRegistry])
 
 	const txExplorerUrl = txDigest ? getTxExplorerUrl(txDigest) : null
 
@@ -79,8 +81,9 @@ export default function NewIntentPage () {
 							onClick={() => {
 								setNotification(null)
 								void connect().catch((err) => {
-									console.error('Wallet connect rejected/failed:', err)
-									setNotification('Wallet connection was rejected or failed. Please try again.')
+									const uiErr = toUiError(err, { area: 'connect' })
+									logUiError(uiErr, { op: 'walletConnect' })
+									setNotification(uiErr.userMessage)
 								})
 							}}
 							className='inline-flex h-9 items-center rounded-md bg-zinc-900 px-3 text-sm font-medium text-white hover:bg-zinc-800'
@@ -129,8 +132,9 @@ export default function NewIntentPage () {
 									setParsed(res)
 								})
 								.catch((err) => {
-									console.error('Parse failed:', err)
-									setParseError('Unable to parse intent. Please check your wording and try again.')
+									const uiErr = toUiError(err, { area: 'parse' })
+									logUiError(uiErr, { op: 'parseFreeTextIntent' })
+									setParseError(uiErr.userMessage)
 								})
 								.finally(() => setIsParsing(false))
 						}}
@@ -158,19 +162,23 @@ export default function NewIntentPage () {
 						<div className='rounded-md border border-zinc-200 p-3'>
 							<div className='text-xs font-semibold text-zinc-700'>Sell</div>
 							<div className='mt-1 text-sm text-zinc-950'>
-								{parsed.parsed.sellAmount} {sellToken?.symbol}
+										{parsed.parsed.sellAmount}{' '}
+										{tokenRegistry.formatLabel({ symbol: sellToken?.symbol ?? parsed.parsed.sellSymbol })}
 							</div>
 						</div>
 						<div className='rounded-md border border-zinc-200 p-3'>
 							<div className='text-xs font-semibold text-zinc-700'>Buy (minimum)</div>
 							<div className='mt-1 text-sm text-zinc-950'>
-								{parsed.parsed.minBuyAmount} {buyToken?.symbol}
+										{parsed.parsed.minBuyAmount}{' '}
+										{tokenRegistry.formatLabel({ symbol: buyToken?.symbol ?? parsed.parsed.buySymbol })}
 							</div>
 						</div>
 						<div className='rounded-md border border-zinc-200 p-3'>
 							<div className='text-xs font-semibold text-zinc-700'>Pair</div>
 							<div className='mt-1 text-sm text-zinc-950'>
-								{sellToken?.symbol} → {buyToken?.symbol}
+										{tokenRegistry.formatLabel({ symbol: sellToken?.symbol ?? parsed.parsed.sellSymbol })}{' '}
+										→{' '}
+										{tokenRegistry.formatLabel({ symbol: buyToken?.symbol ?? parsed.parsed.buySymbol })}
 							</div>
 						</div>
 						<div className='rounded-md border border-zinc-200 p-3'>
@@ -178,6 +186,20 @@ export default function NewIntentPage () {
 							<div className='mt-1 text-sm text-zinc-950'>{formatUtc(parsed.parsed.expiresAtMs)}</div>
 						</div>
 					</div>
+
+							{sellToken?.indicativePriceUsd || buyToken?.indicativePriceUsd ? (
+								<div className='rounded-md border border-zinc-200 p-3'>
+									<div className='text-xs font-semibold text-zinc-700'>Indicative prices (preview only)</div>
+									<div className='mt-1 text-sm text-zinc-950'>
+										{sellToken?.symbol ? `${sellToken.symbol}: $${sellToken.indicativePriceUsd ?? '—'}` : null}
+										{sellToken?.symbol && buyToken?.symbol ? ' · ' : null}
+										{buyToken?.symbol ? `${buyToken.symbol}: $${buyToken.indicativePriceUsd ?? '—'}` : null}
+									</div>
+									<div className='mt-1 text-xs text-zinc-500'>
+										Prices are indicative only. Final execution enforced on-chain.
+									</div>
+								</div>
+							) : null}
 
 					<div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
 						<div className='text-xs text-zinc-500'>No signing happens until you click Confirm & Deposit.</div>
@@ -199,10 +221,9 @@ export default function NewIntentPage () {
 										}, 1000)
 									})
 									.catch((err) => {
-										console.error('Create intent tx failed:', err)
-										setTxError(
-											'Transaction failed or was rejected. You can retry without re-parsing.',
-										)
+										const uiErr = toUiError(err, { area: 'sign' })
+										logUiError(uiErr, { op: 'createIntentAndDeposit' })
+										setTxError(`${uiErr.userMessage} You can retry without re-parsing.`)
 									})
 									.finally(() => setIsSubmitting(false))
 							}}

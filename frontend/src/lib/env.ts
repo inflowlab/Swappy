@@ -3,6 +3,7 @@ type PublicEnv = {
 	suiExplorerBaseUrl: string | null
 	useMockBackend: boolean
 	protocolPackageId: string | null
+	defaultNetwork: string | null
 }
 
 function readPublicString (key: string): string | null {
@@ -23,6 +24,7 @@ export const env: PublicEnv = {
 	suiExplorerBaseUrl: readPublicString('NEXT_PUBLIC_SUI_EXPLORER_BASE_URL'),
 	useMockBackend: readPublicBoolean('NEXT_PUBLIC_USE_MOCK_BACKEND'),
 	protocolPackageId: readPublicString('NEXT_PUBLIC_PROTOCOL_PACKAGE_ID'),
+	defaultNetwork: readPublicString('NEXT_PUBLIC_DEFAULT_NETWORK'),
 }
 
 

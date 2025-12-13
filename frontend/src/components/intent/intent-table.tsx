@@ -4,6 +4,7 @@ import Link from 'next/link'
 import type { ApiIntent } from '@/lib/api'
 import { StatusBadge } from '@/components/status-badge'
 import { cn } from '@/lib/utils/cn'
+import { useTokenRegistry } from '@/components/tokens/token-registry'
 
 function shortId (id: string) {
 	if (id.length <= 14) return id
@@ -15,6 +16,7 @@ export function IntentTable (props: {
 	onCancelClick: (intent: ApiIntent) => void
 }) {
 	const { intents, onCancelClick } = props
+	const tokenRegistry = useTokenRegistry()
 
 	return (
 		<div className='overflow-hidden rounded-lg border border-zinc-200 bg-white'>
@@ -31,13 +33,16 @@ export function IntentTable (props: {
 				<tbody className='divide-y divide-zinc-200'>
 					{intents.map((intent) => {
 						const canCancel = intent.status === 'OPEN_ESCROWED'
+						const pair =
+							intent.pairLabel ??
+							`${tokenRegistry.formatLabel({ symbol: intent.sellSymbol })} → ${tokenRegistry.formatLabel({ symbol: intent.buySymbol })}`
 						return (
 							<tr key={intent.id} className='text-zinc-900'>
 								<td className='px-4 py-3 font-mono text-xs'>{shortId(intent.id)}</td>
-								<td className='px-4 py-3'>{intent.pairLabel ?? '—'}</td>
+								<td className='px-4 py-3'>{pair || '—'}</td>
 								<td className='px-4 py-3'>
 									{intent.sellAmount && intent.sellSymbol
-										? `${intent.sellAmount} ${intent.sellSymbol}`
+										? `${intent.sellAmount} ${tokenRegistry.formatLabel({ symbol: intent.sellSymbol })}`
 										: '—'}
 								</td>
 								<td className='px-4 py-3'>

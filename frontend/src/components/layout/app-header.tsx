@@ -2,7 +2,9 @@
 
 import Link from 'next/link'
 import { useWalletConnection } from '@/components/wallet/wallet-connection'
+import { useNetwork } from '@/components/network/network-provider'
 import { cn } from '@/lib/utils/cn'
+import { isSuiNetwork } from '@/lib/network/types'
 
 function shortAddress (address: string) {
 	if (address.length <= 12) return address
@@ -11,6 +13,7 @@ function shortAddress (address: string) {
 
 export function AppHeader () {
 	const { connected, address, connect, disconnect } = useWalletConnection()
+	const { network, networks, setNetwork } = useNetwork()
 
 	return (
 		<header className='border-b border-zinc-200 bg-white'>
@@ -30,6 +33,23 @@ export function AppHeader () {
 				</div>
 
 				<div className='flex items-center gap-3'>
+					<div className='hidden items-center gap-2 sm:flex'>
+						<span className='text-xs text-zinc-600'>Network</span>
+						<select
+							value={network}
+							onChange={(e) => {
+								const value = e.target.value
+								if (isSuiNetwork(value)) setNetwork(value)
+							}}
+							className='h-9 rounded-md border border-zinc-200 bg-white px-2 text-sm'
+						>
+							{networks.map((n) => (
+								<option key={n} value={n}>
+									{n}
+								</option>
+							))}
+						</select>
+					</div>
 					<div className='hidden text-xs text-zinc-600 sm:block'>
 						{connected && address ? `Connected: ${shortAddress(address)}` : 'Wallet not connected'}
 					</div>

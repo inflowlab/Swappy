@@ -70,4 +70,14 @@ export type ApiAuctionDetail = {
 	extra?: Record<string, unknown>
 }
 
+export type ApiToken = {
+	// Token identifier/address/coin type (canonical ID used across backend payloads)
+	id: string
+	symbol: string
+	decimals: number
+	// Optional mock price for preview-only contexts
+	indicativePriceUsd?: string
+	extra?: Record<string, unknown>
+}
+
 

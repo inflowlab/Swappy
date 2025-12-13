@@ -7,6 +7,8 @@ import { getAuctionDetail } from '@/lib/api'
 import { ErrorBanner, WarningBanner } from '@/components/ui/banner'
 import { StatusBadge } from '@/components/status-badge'
 import { getTxExplorerUrl } from '@/lib/explorer'
+import { useTokenRegistry } from '@/components/tokens/token-registry'
+import { logUiError, toUiError } from '@/lib/errors/ui-errors'
 
 function shortId (id: string) {
 	if (id.length <= 18) return id
@@ -28,6 +30,7 @@ function isSettled (status: string) {
 
 export function AuctionDetail (props: { auctionId: string }) {
 	const { auctionId } = props
+	const tokenRegistry = useTokenRegistry()
 
 	const [auction, setAuction] = useState<ApiAuctionDetail | null>(null)
 	const [isLoading, setIsLoading] = useState(true)
@@ -45,8 +48,9 @@ export function AuctionDetail (props: { auctionId: string }) {
 			}
 			setAuction(data)
 		} catch (err) {
-			console.error('Auction fetch failed:', err)
-			setError('Service temporarily unavailable. Please refresh to retry.')
+			const uiErr = toUiError(err, { area: 'fetch' })
+			logUiError(uiErr, { op: 'getAuctionDetail', auctionId })
+			setError(uiErr.userMessage)
 			setAuction(null)
 		} finally {
 			setIsLoading(false)
@@ -157,7 +161,9 @@ export function AuctionDetail (props: { auctionId: string }) {
 											</td>
 											<td className='px-4 py-3'>{row.pairLabel ?? '—'}</td>
 											<td className='px-4 py-3'>
-												{row.sellAmount && row.sellSymbol ? `${row.sellAmount} ${row.sellSymbol}` : '—'}
+												{row.sellAmount && row.sellSymbol
+													? `${row.sellAmount} ${tokenRegistry.formatLabel({ symbol: row.sellSymbol })}`
+													: '—'}
 											</td>
 											<td className='px-4 py-3'>
 												<StatusBadge status={row.status} />
@@ -175,8 +181,9 @@ export function AuctionDetail (props: { auctionId: string }) {
 							<div className='text-sm font-semibold'>Settlement result</div>
 
 							{showMissingSettlementWarning ? (
-								<WarningBanner title='Settlement data missing'>
-									Auction is marked SETTLED, but settlement proof data is missing.
+								<WarningBanner title='Status pending on-chain confirmation'>
+									Status is not finalized yet. Auction is marked SETTLED but no settlement transaction
+									digest was provided. Funds are not finalized until confirmed on-chain.
 								</WarningBanner>
 							) : null}
 

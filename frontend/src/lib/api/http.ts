@@ -4,16 +4,31 @@ export type HttpError = {
 	bodyText?: string
 }
 
+function withTimeout (init: RequestInit | undefined, timeoutMs = 10_000) {
+	const controller = new AbortController()
+	const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+	const signal = init?.signal
+
+	return {
+		init: {
+			...init,
+			signal: signal ?? controller.signal,
+		},
+		clear: () => clearTimeout(timeoutId),
+	}
+}
+
 export async function getJson<T> (url: string, init?: RequestInit): Promise<T> {
+	const wrapped = withTimeout(init)
 	const res = await fetch(url, {
-		...init,
+		...wrapped.init,
 		method: 'GET',
 		headers: {
 			accept: 'application/json',
 			...(init?.headers ?? {}),
 		},
 		cache: 'no-store',
-	})
+	}).finally(wrapped.clear)
 
 	if (!res.ok) {
 		let bodyText: string | undefined
@@ -36,8 +51,9 @@ export async function postJson<TResponse> (
 	body: unknown,
 	init?: RequestInit,
 ): Promise<TResponse> {
+	const wrapped = withTimeout(init)
 	const res = await fetch(url, {
-		...init,
+		...wrapped.init,
 		method: 'POST',
 		headers: {
 			accept: 'application/json',
@@ -46,7 +62,7 @@ export async function postJson<TResponse> (
 		},
 		body: JSON.stringify(body),
 		cache: 'no-store',
-	})
+	}).finally(wrapped.clear)
 
 	if (!res.ok) {
 		let bodyText: string | undefined

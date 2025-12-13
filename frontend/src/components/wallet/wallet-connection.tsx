@@ -13,6 +13,7 @@ import {
 import { getFullnodeUrl } from '@mysten/sui/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import '@mysten/dapp-kit/dist/index.css'
+import { useNetwork } from '@/components/network/network-provider'
 
 type WalletConnection = {
 	connected: boolean
@@ -26,8 +27,17 @@ const WalletConnectionContext = createContext<WalletConnection | null>(null)
 const queryClient = new QueryClient()
 
 const { networkConfig } = createNetworkConfig({
+	mainnet: {
+		url: getFullnodeUrl('mainnet'),
+	},
 	testnet: {
 		url: getFullnodeUrl('testnet'),
+	},
+	devnet: {
+		url: getFullnodeUrl('devnet'),
+	},
+	localnet: {
+		url: getFullnodeUrl('localnet'),
 	},
 })
 
@@ -74,10 +84,11 @@ function WalletConnectionState (props: { children: React.ReactNode }) {
 
 export function WalletConnectionProvider (props: { children: React.ReactNode }) {
 	const { children } = props
+	const { network } = useNetwork()
 
 	return (
 		<QueryClientProvider client={queryClient}>
-			<SuiClientProvider networks={networkConfig} defaultNetwork='testnet'>
+			<SuiClientProvider key={network} networks={networkConfig} defaultNetwork={network}>
 				<WalletProvider>
 					<WalletConnectionState>{children}</WalletConnectionState>
 				</WalletProvider>

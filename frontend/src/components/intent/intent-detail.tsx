@@ -8,9 +8,10 @@ import { StatusBadge } from '@/components/status-badge'
 import { ErrorBanner, WarningBanner } from '@/components/ui/banner'
 import { InlineNotification } from '@/components/ui/notification'
 import { getTxExplorerUrl } from '@/lib/explorer'
-import { getTokenInfo } from '@/lib/tokens/registry'
+import { useTokenRegistry } from '@/components/tokens/token-registry'
 import { cancelIntent } from '@/lib/wallet'
 import { useWalletConnection } from '@/components/wallet/wallet-connection'
+import { logUiError, toUiError } from '@/lib/errors/ui-errors'
 
 function shortId (id: string) {
 	if (id.length <= 18) return id
@@ -38,6 +39,7 @@ function isTerminalStatus (status: string) {
 export function IntentDetail (props: { intentId: string }) {
 	const { intentId } = props
 	const { connected } = useWalletConnection()
+	const tokenRegistry = useTokenRegistry()
 
 	const [intent, setIntent] = useState<ApiIntentDetail | null>(null)
 	const [isLoading, setIsLoading] = useState(true)
@@ -59,8 +61,9 @@ export function IntentDetail (props: { intentId: string }) {
 			}
 			setIntent(data)
 		} catch (err) {
-			console.error('Intent detail fetch failed:', err)
-			setError('Service temporarily unavailable. Please refresh to retry.')
+			const uiErr = toUiError(err, { area: 'fetch' })
+			logUiError(uiErr, { op: 'getIntentDetail', intentId })
+			setError(uiErr.userMessage)
 			setIntent(null)
 		} finally {
 			setIsLoading(false)
@@ -75,14 +78,14 @@ export function IntentDetail (props: { intentId: string }) {
 	const sellToken = useMemo(() => {
 		const symbol = intent?.sellSymbol
 		if (!symbol) return null
-		return getTokenInfo(symbol) ?? { symbol, decimals: 0 }
-	}, [intent?.sellSymbol])
+		return tokenRegistry.getBySymbol(symbol)
+	}, [intent?.sellSymbol, tokenRegistry])
 
 	const buyToken = useMemo(() => {
 		const symbol = intent?.buySymbol
 		if (!symbol) return null
-		return getTokenInfo(symbol) ?? { symbol, decimals: 0 }
-	}, [intent?.buySymbol])
+		return tokenRegistry.getBySymbol(symbol)
+	}, [intent?.buySymbol, tokenRegistry])
 
 	const status = intent?.status ? String(intent.status) : 'UNKNOWN'
 
@@ -149,17 +152,21 @@ export function IntentDetail (props: { intentId: string }) {
 							<div className='rounded-md border border-zinc-200 p-3'>
 								<div className='text-xs font-semibold text-zinc-700'>Sell</div>
 								<div className='mt-1 text-sm text-zinc-950'>
-									{intent.sellAmount && sellToken?.symbol
-										? `${intent.sellAmount} ${sellToken.symbol}`
-										: '—'}
+									{intent.sellAmount && (sellToken?.decimals ?? null) !== null
+										? `${tokenRegistry.formatAmount(intent.sellAmount, sellToken?.decimals ?? 0)} ${tokenRegistry.formatLabel({ symbol: intent.sellSymbol })}`
+										: intent.sellAmount
+											? `${intent.sellAmount} ${tokenRegistry.formatLabel({ symbol: intent.sellSymbol })}`
+											: '—'}
 								</div>
 							</div>
 							<div className='rounded-md border border-zinc-200 p-3'>
 								<div className='text-xs font-semibold text-zinc-700'>Buy (minimum)</div>
 								<div className='mt-1 text-sm text-zinc-950'>
-									{intent.minBuyAmount && buyToken?.symbol
-										? `${intent.minBuyAmount} ${buyToken.symbol}`
-										: '—'}
+									{intent.minBuyAmount && (buyToken?.decimals ?? null) !== null
+										? `${tokenRegistry.formatAmount(intent.minBuyAmount, buyToken?.decimals ?? 0)} ${tokenRegistry.formatLabel({ symbol: intent.buySymbol })}`
+										: intent.minBuyAmount
+											? `${intent.minBuyAmount} ${tokenRegistry.formatLabel({ symbol: intent.buySymbol })}`
+											: '—'}
 								</div>
 							</div>
 
@@ -178,7 +185,14 @@ export function IntentDetail (props: { intentId: string }) {
 
 					{showOnChainPendingWarning ? (
 						<WarningBanner title='Status pending on-chain confirmation'>
-							The backend reported a terminal status, but no transaction digest was provided.
+							Status is not finalized yet. The backend reported a terminal state but did not provide an
+							on-chain transaction digest. Funds are not finalized until confirmed on-chain.
+						</WarningBanner>
+					) : null}
+
+					{!intent.sellSymbol || !intent.buySymbol ? (
+						<WarningBanner title='Partial intent data'>
+							Some token metadata is missing from the backend response. Displayed fields may be incomplete.
 						</WarningBanner>
 					) : null}
 
@@ -208,8 +222,9 @@ export function IntentDetail (props: { intentId: string }) {
 												setTimeout(() => void load(), 600)
 											})
 											.catch((err) => {
-												console.error('Cancel intent failed:', err)
-												setCancelError('Cancel failed or was rejected. Please try again.')
+												const uiErr = toUiError(err, { area: 'sign' })
+												logUiError(uiErr, { op: 'cancelIntent', intentId: intent.id })
+												setCancelError(uiErr.userMessage)
 											})
 											.finally(() => setIsCanceling(false))
 									}}
