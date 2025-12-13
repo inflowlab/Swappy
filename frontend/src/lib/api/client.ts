@@ -2,6 +2,7 @@ import { env } from '@/lib/env'
 import { getJson, postJson } from './http'
 import {
 	mockGetAuction,
+	mockGetAuctionDetail,
 	mockGetIntent,
 	mockGetIntentDetail,
 	mockListAuctions,
@@ -9,7 +10,7 @@ import {
 	mockParseFreeTextIntent,
 } from './mock'
 import type { FreeTextIntentParseRequest, FreeTextIntentParseResponse } from './intent-parse'
-import type { ApiAuction, ApiIntent, ApiIntentDetail } from './types'
+import type { ApiAuction, ApiAuctionDetail, ApiIntent, ApiIntentDetail } from './types'
 
 function normalizeBaseUrl (baseUrl: string) {
 	return baseUrl.replace(/\/+$/, '')
@@ -49,6 +50,12 @@ export async function getAuction (auctionId: string): Promise<ApiAuction | null>
 	if (shouldMockBackend()) return await mockGetAuction(auctionId)
 	const baseUrl = normalizeBaseUrl(env.backendBaseUrl as string)
 	return await getJson<ApiAuction>(`${baseUrl}/auctions/${encodeURIComponent(auctionId)}`)
+}
+
+export async function getAuctionDetail (auctionId: string): Promise<ApiAuctionDetail | null> {
+	if (shouldMockBackend()) return await mockGetAuctionDetail(auctionId)
+	const baseUrl = normalizeBaseUrl(env.backendBaseUrl as string)
+	return await getJson<ApiAuctionDetail>(`${baseUrl}/auction/${encodeURIComponent(auctionId)}`)
 }
 
 export async function parseFreeTextIntent (

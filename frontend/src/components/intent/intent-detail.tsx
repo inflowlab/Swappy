@@ -232,13 +232,35 @@ export function IntentDetail (props: { intentId: string }) {
 							<div className='mt-3 grid gap-3 sm:grid-cols-2'>
 								<div className='rounded-md border border-zinc-200 p-3'>
 									<div className='text-xs font-semibold text-zinc-700'>Auction ID</div>
-									<div className='mt-1 font-mono text-xs'>{intent.auctionId ?? '—'}</div>
+									<div className='mt-1 font-mono text-xs'>
+										{intent.auctionId ? (
+											<Link
+												href={`/auction/${encodeURIComponent(intent.auctionId)}`}
+												className='underline hover:text-zinc-950'
+											>
+												{intent.auctionId}
+											</Link>
+										) : (
+											'—'
+										)}
+									</div>
 								</div>
 								<div className='rounded-md border border-zinc-200 p-3'>
 									<div className='text-xs font-semibold text-zinc-700'>Auction deadline</div>
 									<div className='mt-1 text-sm'>{formatUtc(intent.auctionDeadlineMs)}</div>
 								</div>
 							</div>
+
+							{intent.auctionId ? (
+								<div className='mt-4'>
+									<Link
+										href={`/auction/${encodeURIComponent(intent.auctionId)}`}
+										className='inline-flex h-9 items-center rounded-md border border-zinc-200 bg-white px-3 text-sm font-medium hover:bg-zinc-50'
+									>
+										View Auction
+									</Link>
+								</div>
+							) : null}
 						</div>
 					) : null}
 
@@ -248,6 +270,19 @@ export function IntentDetail (props: { intentId: string }) {
 							<p className='mt-2 text-sm text-zinc-700'>Your intent was settled successfully.</p>
 
 							<div className='mt-3 space-y-2 text-sm'>
+								<div>
+									Auction:{' '}
+									{intent.auctionId ? (
+										<Link
+											href={`/auction/${encodeURIComponent(intent.auctionId)}`}
+											className='underline hover:text-zinc-950'
+										>
+											<code className='font-mono'>{intent.auctionId}</code>
+										</Link>
+									) : (
+										'—'
+									)}
+								</div>
 								<div>
 									Settlement tx:{' '}
 									{intent.settlementTxDigest ? (
@@ -272,6 +307,17 @@ export function IntentDetail (props: { intentId: string }) {
 								</div>
 								<div>Final received amount: {intent.finalReceivedAmount ?? '—'}</div>
 							</div>
+
+							{intent.auctionId ? (
+								<div className='mt-4'>
+									<Link
+										href={`/auction/${encodeURIComponent(intent.auctionId)}`}
+										className='inline-flex h-9 items-center rounded-md border border-zinc-200 bg-white px-3 text-sm font-medium hover:bg-zinc-50'
+									>
+										View Auction
+									</Link>
+								</div>
+							) : null}
 						</div>
 					) : null}
 

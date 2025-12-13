@@ -1,6 +1,6 @@
 import { IntentStatus } from '@/lib/models/intent-status'
 import type { FreeTextIntentParseResponse } from './intent-parse'
-import type { ApiAuction, ApiIntent, ApiIntentDetail } from './types'
+import type { ApiAuction, ApiAuctionDetail, ApiIntent, ApiIntentDetail } from './types'
 
 const fixedNowMs = 1_735_000_000_000
 
@@ -131,6 +131,8 @@ export async function mockGetIntentDetail (intentId: string): Promise<ApiIntentD
 	}
 
 	if (base.status === IntentStatus.SETTLED) {
+		detail.auctionId = 'auction_002'
+		detail.auctionDeadlineMs = fixedNowMs + 5 * 60_000
 		detail.settlementTxDigest = 'MOCK_SETTLE_TX_001'
 		detail.solverUsed = 'Mixed'
 		detail.matchedViaCoW = true
@@ -148,6 +150,54 @@ export async function mockGetIntentDetail (intentId: string): Promise<ApiIntentD
 
 	if (base.status === IntentStatus.FAILED) {
 		detail.failureReason = 'Mock failure: solver could not produce a valid plan.'
+	}
+
+	return detail
+}
+
+export async function mockGetAuctionDetail (auctionId: string): Promise<ApiAuctionDetail | null> {
+	const base = mockAuctions.find((a) => a.id === auctionId)
+	if (!base) return null
+
+	const owner = '0xDEMO_OWNER'
+	const intents = await mockListIntents(owner)
+	const rows = base.intentIds
+		.map((id) => intents.find((i) => i.id === id))
+		.filter((i): i is ApiIntent => Boolean(i))
+		.map((i) => {
+			const executionType =
+				auctionId === 'auction_002'
+					? 'Cetus'
+					: i.status === IntentStatus.OPEN_ESCROWED
+						? 'Skipped'
+						: 'CoW'
+			return {
+				intentId: i.id,
+				pairLabel: i.pairLabel,
+				sellAmount: i.sellAmount,
+				sellSymbol: i.sellSymbol,
+				status: i.status,
+				executionType,
+			}
+		})
+
+	const status: ApiAuctionDetail['status'] = auctionId === 'auction_002' ? 'SETTLED' : 'OPEN'
+	const detail: ApiAuctionDetail = {
+		id: auctionId,
+		status,
+		createdAtMs: fixedNowMs - 20 * 60_000,
+		deadlineMs: fixedNowMs + 5 * 60_000,
+		intents: rows.slice(0, 10),
+	}
+
+	if (status === 'SETTLED') {
+		detail.settlement = {
+			winningSolver: 'Mixed',
+			cowMatchesCount: 1,
+			cetusSwapsCount: 1,
+			totalBuyVolume: '124.50 USDC',
+			settlementTxDigest: 'MOCK_AUCTION_SETTLE_TX_001',
+		}
 	}
 
 	return detail

@@ -39,4 +39,35 @@ export type ApiAuction = {
 	extra?: Record<string, unknown>
 }
 
+export type AuctionStatus = 'OPEN' | 'SETTLED' | string
+export type ExecutionType = 'CoW' | 'Cetus' | 'Skipped' | string
+
+export type ApiAuctionIntentRow = {
+	intentId: string
+	pairLabel?: string
+	sellAmount?: string
+	sellSymbol?: string
+	status: IntentStatus | string
+	executionType?: ExecutionType
+}
+
+export type ApiAuctionSettlement = {
+	winningSolver?: string
+	cowMatchesCount?: number
+	cetusSwapsCount?: number
+	totalBuyVolume?: string
+	settlementTxDigest?: string
+}
+
+export type ApiAuctionDetail = {
+	id: string
+	status: AuctionStatus
+	createdAtMs?: number
+	deadlineMs?: number
+	intents: ApiAuctionIntentRow[]
+	settlement?: ApiAuctionSettlement
+	// Allow backend to add fields without breaking the UI.
+	extra?: Record<string, unknown>
+}
+
 
