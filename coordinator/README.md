@@ -91,12 +91,10 @@ OpenAI (required only for parsing):
 ### Run locally
 From `coordinator/`:
 ```bash
-export NETWORKS_SUPPORTED="devnet,testnet,mainnet,localnet"
-export OPENAI_MODEL="gpt-4o-2024-08-06" # optional unless using parsing
-export OPENAI_API_KEY="..."             # optional unless using parsing
-
 npm run dev
 ```
+
+The server will load (in order) `coordinator/env.local`, `coordinator/.env`, and `coordinator/.env.local` into `process.env` at startup (shell env vars still take priority).
 
 ---
 

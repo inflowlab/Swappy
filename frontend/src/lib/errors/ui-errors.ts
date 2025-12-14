@@ -55,18 +55,35 @@ function looksLikeTimeoutOrOffline (err: unknown, msg: string): boolean {
 	)
 }
 
+function describeError (err: unknown): string {
+	if (typeof err === 'string') return err
+	if (!err) return ''
+	if (err instanceof Error) {
+		const cause = (err as unknown as { cause?: unknown }).cause
+		const causeMsg = cause ? describeError(cause) : ''
+		return causeMsg ? `${err.message} (cause: ${causeMsg})` : err.message
+	}
+	if (typeof err === 'object') {
+		const rec = err as Record<string, unknown>
+		if (typeof rec.message === 'string') return rec.message
+		if (typeof rec.error === 'string') return rec.error
+		if (typeof rec.code === 'string' && typeof rec.details === 'string') return `${rec.code}: ${rec.details}`
+		try {
+			return JSON.stringify(err)
+		} catch {
+			return ''
+		}
+	}
+	return ''
+}
+
 export function toUiError (
 	err: unknown,
 	hint?: {
 		area?: 'connect' | 'sign' | 'fetch' | 'parse'
 	},
 ): UiError {
-	const msg = (() => {
-		if (typeof err === 'string') return err
-		if (!err || typeof err !== 'object') return ''
-		const rec = err as Record<string, unknown>
-		return typeof rec.message === 'string' ? rec.message : ''
-	})()
+	const msg = describeError(err)
 
 	if (hint?.area === 'connect') {
 		if (msg.toLowerCase().includes('no sui wallet')) {
@@ -94,6 +111,24 @@ export function toUiError (
 	}
 
 	if (hint?.area === 'sign') {
+		// Surface local configuration / unimplemented wiring clearly (don't blame the wallet).
+		if (msg.includes('Missing NEXT_PUBLIC_PROTOCOL_PACKAGE_ID')) {
+			return {
+				category: 'Invariant',
+				code: 'INVARIANT_STATUS_CONTRADICTION',
+				userMessage: msg,
+				debugMessage: msg,
+			}
+		}
+		if (msg.toLowerCase().includes('not implemented yet')) {
+			return {
+				category: 'Invariant',
+				code: 'INVARIANT_STATUS_CONTRADICTION',
+				userMessage:
+					'On-chain tx wiring is not implemented in the frontend yet. Enable NEXT_PUBLIC_USE_MOCK_TX=true for demo mode.',
+				debugMessage: msg,
+			}
+		}
 		if (looksLikeUserRejected(msg)) {
 			return {
 				category: 'Wallet',

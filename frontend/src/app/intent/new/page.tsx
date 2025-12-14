@@ -10,10 +10,12 @@ import { ErrorBanner, WarningBanner } from '@/components/ui/banner'
 import { InlineNotification } from '@/components/ui/notification'
 import { useTokenRegistry } from '@/components/tokens/token-registry'
 import { useNetworkHealth } from '@/components/network/network-health'
+import { useNetwork } from '@/components/network/network-provider'
 import { createIntentAndDeposit } from '@/lib/wallet'
 import { getTxExplorerUrl } from '@/lib/explorer'
 import { logUiError, toUiError } from '@/lib/errors/ui-errors'
 import { env } from '@/lib/env'
+import { useSignAndExecuteTransaction, useSuiClient } from '@mysten/dapp-kit'
 
 function formatUtc (ms: number) {
 	try {
@@ -28,6 +30,20 @@ export default function NewIntentPage () {
 	const { connected, address, connect } = useWalletConnection()
 	const tokenRegistry = useTokenRegistry()
 	const networkHealth = useNetworkHealth()
+	const { network } = useNetwork()
+	const client = useSuiClient()
+
+	const { mutateAsync: signAndExecuteTransaction } = useSignAndExecuteTransaction({
+		execute: async ({ bytes, signature }) =>
+			await client.executeTransactionBlock({
+				transactionBlock: bytes,
+				signature,
+				options: {
+					showRawEffects: true,
+					showObjectChanges: true,
+				},
+			}),
+	})
 
 	const [text, setText] = useState('')
 	const [isParsing, setIsParsing] = useState(false)
@@ -42,6 +58,7 @@ export default function NewIntentPage () {
 
 	const hasWallet = connected && Boolean(address)
 	const canInteract = hasWallet && !isSubmitting && (!networkHealth.error || env.useMockChain)
+	const canConfirm = canInteract && !isSubmitting && !Boolean(networkHealth.error)
 
 	const isTextValid = text.trim().length > 0
 
@@ -230,13 +247,54 @@ export default function NewIntentPage () {
 						<div className='text-xs text-zinc-500'>No signing happens until you click Confirm & Deposit.</div>
 						<button
 							type='button'
-							disabled={!canInteract || isSubmitting || Boolean(networkHealth.error)}
+							disabled={!canConfirm}
 							onClick={() => {
 								setIsSubmitting(true)
 								setTxError(null)
 								setTxDigest(null)
 								setIntentId(null)
-								void createIntentAndDeposit(parsed.parsed)
+								if (!address) {
+									setTxError('Wallet not connected.')
+									setIsSubmitting(false)
+									return
+								}
+								if (!sellToken || !buyToken) {
+									setTxError('Token metadata unavailable. Please refresh and try again.')
+									setIsSubmitting(false)
+									return
+								}
+
+								void createIntentAndDeposit({
+									parsed: parsed.parsed,
+									network,
+									owner: address,
+									sellDecimals: sellToken.decimals,
+									buyDecimals: buyToken.decimals,
+									client,
+									signAndExecute: async (tx, chain) => {
+										try {
+											const res = await signAndExecuteTransaction({
+												transaction: tx,
+												chain: chain as `${string}:${string}`,
+											})
+											return { digest: res.digest, objectChanges: res.objectChanges }
+										} catch (e) {
+											const msg =
+												e instanceof Error
+													? e.message
+													: e && typeof e === 'object'
+														? (() => {
+																try {
+																	return JSON.stringify(e)
+																} catch {
+																	return ''
+																}
+															})()
+														: String(e ?? '')
+											throw new Error(`Wallet signAndExecuteTransaction failed. ${msg}`)
+										}
+									},
+								})
 									.then((res) => {
 										setTxDigest(res.digest)
 										setIntentId(res.intentId)

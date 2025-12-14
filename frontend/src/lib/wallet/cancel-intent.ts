@@ -5,7 +5,7 @@ export type CancelIntentResult = {
 }
 
 export async function cancelIntent (intentId: string): Promise<CancelIntentResult> {
-	if (env.useMockBackend) {
+	if (env.useMockTx) {
 		return { digest: `MOCK_CANCEL_${encodeURIComponent(intentId)}` }
 	}
 

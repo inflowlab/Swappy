@@ -7,7 +7,8 @@ export function registerCors(app: FastifyInstance, env: EnvConfig): void {
   app.register(cors, {
     origin: env.corsOrigin,
     methods: ['GET', 'POST', 'OPTIONS'],
-    allowedHeaders: ['Content-Type']
+    // Frontend uses Idempotency-Key for parse requests; include it to satisfy CORS preflight.
+    allowedHeaders: ['Content-Type', 'Idempotency-Key']
   });
 }
 

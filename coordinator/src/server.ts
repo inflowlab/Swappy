@@ -1,7 +1,9 @@
 import { buildApp } from './app.js';
 import { loadEnv } from './config/env.js';
+import { loadCoordinatorEnvFiles } from './config/dotenv.js';
 
 async function main(): Promise<void> {
+  loadCoordinatorEnvFiles();
   const env = loadEnv();
   const app = buildApp({ env, logger: true });
 
